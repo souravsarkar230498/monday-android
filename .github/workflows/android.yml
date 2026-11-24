@@ -1,35 +1,53 @@
 name: Build MONDAY Android APK
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK
+      - name: Extract MONDAY v0.3 project
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP_FILE="MONDAY-v0.3-Integrated.zip"
+          test -f "$ZIP_FILE" || {
+            echo "ERROR: ZIP file not found."
+            exit 1
+          }
+          mkdir -p /tmp/monday-v03
+          unzip -q "$ZIP_FILE" -d /tmp/monday-v03
+          PROJECT_DIR="/tmp/monday-v03/MONDAY-v0.3-Integrated"
+          test -f "$PROJECT_DIR/settings.gradle.kts"
+          cp -a "$PROJECT_DIR/." "$GITHUB_WORKSPACE/"
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.9"
+          gradle-version: '8.9'
 
-      - name: Build APK
+      - name: Build debug APK
         run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MONDAY-debug-apk
+          name: MONDAY-v0.3-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+        
